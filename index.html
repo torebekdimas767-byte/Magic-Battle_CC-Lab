@@ -92,7 +92,15 @@ video{opacity:.62}#gl,#sk{pointer-events:none}.ov{z-index:5;overflow:auto;paddin
 .gcard b{font-size:20px;letter-spacing:.02em}
 .gcard span.d{font-size:13px;line-height:1.5;color:#9db4d0}
 .gcard em{font-style:normal;font-size:11px;letter-spacing:.08em;color:#83e6e0;margin-top:4px}
-</style></head><body>
+</style>
+/* Error mode: live diagnostics */
+#error-toggle{position:absolute;right:14px;bottom:64px;z-index:30;padding:9px 13px;font:700 11px system-ui;background:#081426eF;color:#a5f3fc;border:1px solid #67e8f9aa;box-shadow:0 0 20px #22d3ee22}
+#error-panel{position:absolute;z-index:31;right:14px;bottom:112px;width:min(340px,calc(100% - 28px));max-height:55%;overflow:auto;padding:16px;border:1px solid #67e8f988;border-radius:14px;background:#061023f2;color:#e5f7ff;font:12px/1.6 system-ui;box-shadow:0 18px 50px #000b;backdrop-filter:blur(14px)}
+#error-panel h3{margin:0 0 8px;color:#a5f3fc;font-size:13px;letter-spacing:.12em}
+#error-panel .diag-row{display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:1px solid #ffffff12}
+#error-panel .diag-ok{color:#86efac}#error-panel .diag-bad{color:#fca5a5}#error-panel .diag-warn{color:#fcd34d}
+#error-panel p{margin:9px 0 0;color:#9db4d0;font-size:11px}
+</head><body>
 <div id="stage">
 <video id="v" playsinline muted></video><canvas id="gl"></canvas><canvas id="sk" style="pointer-events:none"></canvas>
 <div class="ov" id="splash">
@@ -618,4 +626,34 @@ const calibration=$('bCal').onclick;$('bCal').onclick=async()=>{if(starting)retu
 // Startup/menu never exposes the enemy behind the panels.
 em.visible=false;rings.forEach(r=>r.visible=false);
 
+
+// CC LAB Error Mode: explain camera/tracking/runtime state in a user-readable panel.
+(()=>{
+ const stage=document.getElementById('stage');
+ if(!stage||document.getElementById('error-toggle'))return;
+ const toggle=document.createElement('button');toggle.id='error-toggle';toggle.type='button';toggle.textContent='⚠ Режим ошибок';
+ const panel=document.createElement('section');panel.id='error-panel';panel.className='hide';panel.setAttribute('aria-live','polite');
+ panel.innerHTML='<h3>ДИАГНОСТИКА · ERROR MODE</h3><div id="diag-list"></div><p>Зелёный — работает; жёлтый — ожидает; красный — требуется действие. Проверка обновляется автоматически.</p>';
+ stage.append(toggle,panel);
+ toggle.addEventListener('click',()=>{panel.classList.toggle('hide');toggle.textContent=panel.classList.contains('hide')?'⚠ Режим ошибок':'✕ Закрыть диагностику';if(!panel.classList.contains('hide'))render()});
+ function row(name,ok,detail,wait=false){return '<div class="diag-row"><span>'+name+'</span><b class="'+(ok?'diag-ok':wait?'diag-warn':'diag-bad')+'">'+(ok?'OK':wait?'ОЖИДАНИЕ':'ПРОВЕРЬ')+' · '+detail+'</b></div>'}
+ function render(){const list=document.getElementById('diag-list');if(!list)return;
+  const video=document.getElementById('v');const hasVideo=!!(video&&video.srcObject&&video.readyState>=2);
+  const now=performance.now();const poseSeen=typeof lastPoseAt!=='undefined'&&now-lastPoseAt<1500;
+  const handsSeen=typeof lastHandsAt!=='undefined'&&now-lastHandsAt<1500;
+  const peerReady=typeof phonePeer!=='undefined'&&phonePeer&&phonePeer.open;
+  const rows=[];
+  rows.push(row('Камера',hasVideo,'видео '+(video?video.readyState+'/4':'не найдено'),!hasVideo));
+  rows.push(row('Распознавание тела',poseSeen,'MediaPipe Pose',!poseSeen));
+  rows.push(row('Кисти',handsSeen,'MediaPipe Hands',!handsSeen));
+  rows.push(row('Соединение телефона',!!peerReady,'PeerJS',!peerReady));
+  rows.push(row('Графика',!!(window.WebGLRenderingContext),'WebGL API',!window.WebGLRenderingContext));
+  let advice='Если камера не запускается, разрешите доступ в браузере и используйте HTTPS или localhost.';
+  if(hasVideo&&!poseSeen)advice='Камера передаёт видео, но тело не обнаружено: встаньте в кадр целиком, добавьте освещение и покажите плечи и руки.';
+  else if(hasVideo&&poseSeen&&!handsSeen)advice='Тело видно. Покажите кисти целиком, не закрывайте пальцы и подождите распознавания.';
+  if(video&&video.error)advice='Ошибка видеопотока. Перезагрузите страницу и проверьте подключение камеры.';
+  list.innerHTML=rows.join('')+'<p><b>Что сделать:</b> '+advice+'</p>';
+ }
+ setInterval(()=>{if(!panel.classList.contains('hide'))render()},1000);
+})();
 </script></body></html>
