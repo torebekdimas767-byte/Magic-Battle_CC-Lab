@@ -1,0 +1,18 @@
+<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Камера для Magic Battle</title>
+<style>html,body{margin:0;height:100%;background:#07060d;color:#f3ecd8;font-family:system-ui,sans-serif;text-align:center}body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:16px;box-sizing:border-box}
+video{width:100%;max-width:560px;max-height:50vh;border-radius:12px;background:#000}input{font-size:28px;width:140px;text-align:center;padding:8px;border-radius:10px;border:2px solid #e8c56a;background:#0008;color:#fff}
+button{font-size:18px;font-weight:700;padding:12px 28px;border:0;border-radius:10px;background:linear-gradient(#f6dc94,#b98a2c);color:#1a1204}#st{font-size:14px;opacity:.8}</style></head><body>
+<h2 style="margin:0;color:#e8c56a">📱 Камера для игры</h2>
+<video id="v" playsinline muted autoplay></video>
+<select id="f" style="font-size:16px;padding:8px;border-radius:8px"><option value="environment">Основная камера (задняя)</option><option value="user">Фронтальная</option></select>
+<input id="c" inputmode="numeric" maxlength="4" placeholder="код"><button id="b">Подключиться</button>
+<div id="st">Поставь телефон горизонтально на 2–3 м от себя, введи код с экрана игры.</div>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+const $=i=>document.getElementById(i);
+$('b').onclick=async()=>{const code=$('c').value.trim();if(code.length!=4){$('st').textContent='Введи 4-значный код';return}
+try{const s=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280},height:{ideal:720},facingMode:$('f').value},audio:false});$('v').srcObject=s;
+const p=new Peer();p.on('open',()=>{const call=p.call('mb-'+code,s);call.on('close',()=>$('st').textContent='Соединение закрыто');$('st').textContent='✓ Идёт передача на компьютер. Не блокируй экран.'});
+p.on('error',e=>$('st').textContent='Ошибка: '+e.type+' (проверь код)')}
+catch(e){$('st').textContent='Нет доступа к камере (нужен HTTPS): '+e.name}};
+</script></body></html>
